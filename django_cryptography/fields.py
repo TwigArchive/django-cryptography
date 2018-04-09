@@ -1,13 +1,13 @@
 from base64 import b64decode, b64encode
-from importlib import import_module
 
 from django.core import checks
 from django.db import models
 from django.utils import six
 from django.utils.encoding import force_bytes
+from django.utils.six import with_metaclass
 from django.utils.translation import ugettext_lazy as _
 
-from django_cryptography.core.signing import SignatureExpired
+from django_cryptography.core.signing import SignatureExpired, BadSignature
 from django_cryptography.utils.crypto import FernetBytes
 
 try:
@@ -180,6 +180,14 @@ class EncryptedMixin(object):
             return self._load(force_bytes(value))
         return value
 
+    def to_python(self, value):
+        if value is not None:
+            try:
+                return self._load(force_bytes(value))
+            except (TypeError, BadSignature):
+                pass
+        return value
+
 
 def get_encrypted_field(base_class):
     """
@@ -194,7 +202,7 @@ def get_encrypted_field(base_class):
     field_name = 'Encrypted' + base_class.__name__
     if base_class not in FIELD_CACHE:
         FIELD_CACHE[base_class] = type(field_name,
-                                       (EncryptedMixin, base_class), {
+                                       (with_metaclass(models.SubfieldBase, EncryptedMixin, base_class),), {
                                            'base_class': base_class,
                                        })
     return FIELD_CACHE[base_class]

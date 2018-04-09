@@ -131,8 +131,7 @@ class FernetBytes(object):
             algorithms.AES(self._encryption_key), modes.CBC(iv),
             self._backend).encryptor()
         ciphertext = encryptor.update(padded_data) + encryptor.finalize()
-
-        return self._signer.sign(iv + ciphertext)
+        return base64.urlsafe_b64encode(self._signer.sign(iv + ciphertext))
 
     def decrypt(self, data, ttl=None):
         """
@@ -140,6 +139,7 @@ class FernetBytes(object):
         :type ttl: int
         :rtype: bytes
         """
+        data = base64.urlsafe_b64decode(data)
         data = self._signer.unsign(data, ttl)
 
         iv = data[:16]
